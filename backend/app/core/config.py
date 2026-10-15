@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173"
     MAX_UPLOAD_SIZE_MB: int = 10
     OCR_LANGUAGE: str = "eng"
+    TESSERACT_CMD: str | None = None
+    TESSDATA_PREFIX: str | None = None
     ENVIRONMENT: str = "development"
 
     model_config = SettingsConfigDict(

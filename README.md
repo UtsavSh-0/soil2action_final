@@ -25,6 +25,8 @@ npm run dev
 
 The FastAPI backend stores application data in a local SQLite file and does not require Supabase or a database server. Windows setup, OCR prerequisites, backup/restore, and backend test commands are in [backend/README.md](backend/README.md).
 
+For local development, the root `.env.local` sets `VITE_API_BASE_URL=http://localhost:8000`. Start FastAPI on port 8000 and restart `npm run dev` after changing frontend environment variables. The Soil Health Card scanner requires the FastAPI backend and does not use the development mock adapter.
+
 ## Built with
 
 - TanStack Start

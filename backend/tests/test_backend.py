@@ -99,8 +99,20 @@ def test_malformed_image_is_rejected_cleanly() -> None:
 def test_ocr_extraction_from_text_fixture() -> None:
     service = OCRService()
     parsed = service._parse_extracted_values("pH 6.8 Organic Carbon 0.8% Available N 240 kg/ha")
-    assert parsed["ph"]["value"] == 6.8
-    assert parsed["organic_carbon"]["value"] == 0.8
+    assert parsed["ph"]["value"] == "6.8"
+    assert parsed["organic_carbon"]["value"] == "0.8"
+    assert parsed["available_nitrogen"]["value"] == "240"
+    assert parsed["available_nitrogen"]["unit"] == "kg/ha"
+
+
+def test_parser_preserves_text_and_marks_missing_fields_uncertain() -> None:
+    parsed = OCRService()._parse_extracted_values("Farmer Name: Radha Devi\nDistrict: Sehore\npH 6,8\nCalcium: 12 mg/kg", confidence=None)
+    assert parsed["farmer_name"]["value"] == "Radha Devi"
+    assert parsed["district"]["value"] == "Sehore"
+    assert parsed["ph"]["value"] == "6,8"
+    assert parsed["ph"]["review_status"] == "uncertain"
+    assert parsed["other_measurement_calcium"]["value"] == "12"
+    assert "boron" not in parsed
 
 
 def test_low_confidence_ocr_requires_manual_review(monkeypatch) -> None:
@@ -137,6 +149,19 @@ def test_missing_tesseract_error() -> None:
             OCRService()._ensure_tesseract()
     finally:
         shutil.which = original
+
+
+def test_scan_returns_clear_service_error_when_tesseract_is_unavailable(monkeypatch) -> None:
+    def missing(self):
+        raise RuntimeError("Tesseract is not installed or not on PATH")
+
+    monkeypatch.setattr(OCRService, "_ensure_tesseract", missing)
+    image = BytesIO()
+    Image.new("RGB", (20, 20), "white").save(image, format="PNG")
+    response = client.post("/api/soil/scan", files={"file": ("card.png", image.getvalue(), "image/png")}, headers=headers())
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "ocr_setup_error"
+    assert "TESSERACT_CMD" in response.json()["error"]["message"]
 
 
 def test_scan_confirmation_requires_explicit_confirmation() -> None:
@@ -341,6 +366,28 @@ def test_scan_job_persists_for_reopened_repository(monkeypatch) -> None:
     assert scan is not None
     assert scan["requires_user_review"] is True
     assert scan["extracted_fields"]["ph"]["confirmed"] is False
+
+
+def test_scan_text_and_corrected_extraction_can_be_confirmed_without_analysis(monkeypatch) -> None:
+    async def fake_scan_file(self, upload):
+        return {
+            "scan_id": "review-scan", "status": "review_required", "filename": "card.png",
+            "detected_file_type": "image", "extracted_fields": {"ph": {"value": "6.1", "unit": "pH", "confidence": 72, "confirmed": False}},
+            "warnings": [], "raw_text": "pH 6.1", "requires_user_review": True,
+        }
+    monkeypatch.setattr(OCRService, "scan_file", fake_scan_file)
+    uploaded = client.post("/api/soil/scan", files={"file": ("card.png", b"fake", "image/png")}, headers=headers("review-user"))
+    assert uploaded.status_code == 200
+    text_response = client.get("/api/soil/scan/review-scan/text", headers=headers("review-user"))
+    assert text_response.json()["raw_text"] == "pH 6.1"
+    confirmed = client.post("/api/soil/scan/review-scan/confirm", headers=headers("review-user"), json={
+        "confirmed": True,
+        "extracted_fields": {"ph": {"value": "6.4", "unit": "pH", "confidence": 72, "confirmed": False, "source": "user corrected"}},
+    })
+    assert confirmed.status_code == 200
+    assert confirmed.json()["extracted_fields"]["ph"]["value"] == "6.4"
+    assert confirmed.json()["extracted_fields"]["ph"]["confirmed"] is True
+    assert repository.count_reports("review-user") == 0
 
 
 def test_invalid_analysis_payload_returns_validation_error() -> None:

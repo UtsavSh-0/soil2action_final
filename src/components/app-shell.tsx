@@ -1,14 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { FlaskConical, History, LayoutDashboard, Menu } from "lucide-react";
+import { FlaskConical, History, LayoutDashboard, Menu, ScanLine } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useI18n, type TKey } from "@/lib/i18n";
 import { LanguageSwitcher, Logo } from "./common";
 
-const nav: { to: "/dashboard" | "/analyze" | "/history"; label: TKey; icon: typeof History }[] = [
+const nav: { to: "/dashboard" | "/analyze" | "/history" | "/scan"; label: TKey; icon: typeof History }[] = [
   { to: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
   { to: "/analyze", label: "nav.analyze", icon: FlaskConical },
+  { to: "/scan", label: "nav.scan", icon: ScanLine },
   { to: "/history", label: "nav.history", icon: History },
 ];
 

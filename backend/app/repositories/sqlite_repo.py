@@ -65,6 +65,10 @@ class SQLiteRepository:
             "filename": row["original_filename"],
             "detected_file_type": row["detected_file_type"],
             "extracted_fields": fields,
+            "fields_requiring_review": [
+                key for key, value in fields.items()
+                if isinstance(value, dict) and (not value.get("confirmed", False) or value.get("review_status") not in (None, "confirmed"))
+            ],
             "confidence_information": confidence,
             "warnings": warnings,
             "raw_text": row["extracted_text"],

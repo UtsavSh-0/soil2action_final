@@ -22,11 +22,19 @@ async def scan_soil(file: UploadFile = File(...), user_id: str = Depends(get_cur
     try:
         result = await ocr_service.scan_file(file)
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail={"code": "ocr_setup_error", "message": str(exc)}) from exc
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"code": "ocr_setup_error", "message": "Tesseract OCR executable was not found or could not run. Install Tesseract with English (eng) language data, or set TESSERACT_CMD in backend/.env to the full path of tesseract.exe, then restart the backend."}) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "invalid_upload", "message": str(exc)}) from exc
     stored = await run_in_threadpool(repository.add_scan, user_id, result)
     return stored
+
+
+@router.get("/scan/{scan_id}/text", summary="Retrieve the raw text extracted from a scan")
+def get_scan_text(scan_id: str, user_id: str = Depends(get_current_user_id)) -> dict[str, str]:
+    record = repository.get_scan(scan_id, user_id=user_id)
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "scan_not_found", "message": "Scan job not found for this user"})
+    return {"scan_id": scan_id, "raw_text": record.get("raw_text") or ""}
 
 
 @router.get("/scan/{scan_id}", response_model=ScanJobRead, summary="Fetch a scan job result")
@@ -44,10 +52,16 @@ def confirm_scan(scan_id: str, payload: ConfirmScanRequest, user_id: str = Depen
     record = repository.get_scan(scan_id, user_id=user_id)
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "scan_not_found", "message": "Scan job not found for this user"})
-    field_map = {}
-    for key, value in payload.measurements.model_dump(exclude_none=True).items():
-        if isinstance(value, dict) and value.get("value") is not None:
-            field_map[key] = {"value": value["value"], "unit": value.get("unit"), "source": value.get("source", "manual")}
+    field_map: dict[str, Any] = {}
+    if payload.extracted_fields is not None:
+        field_map = {
+            key: value.model_copy(update={"confirmed": True, "review_status": "confirmed", "source": value.source or "user_review"}).model_dump()
+            for key, value in payload.extracted_fields.items()
+        }
+    elif payload.measurements is not None:
+        for key, value in payload.measurements.model_dump(exclude_none=True).items():
+            if isinstance(value, dict) and value.get("value") is not None:
+                field_map[key] = {"value": value["value"], "unit": value.get("unit"), "source": value.get("source", "manual"), "confirmed": True, "review_status": "confirmed"}
     updated = repository.update_scan(scan_id, user_id, {
         "status": "confirmed",
         "requires_user_review": False,

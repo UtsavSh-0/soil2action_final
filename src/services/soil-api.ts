@@ -13,6 +13,26 @@ import { apiRequest } from "./api-client";
 import { endpoints } from "./endpoints";
 import { mockApi } from "./mock-adapter";
 
+export interface ScanField {
+  value: string | number | null;
+  unit?: string | null;
+  confidence?: number | null;
+  confirmed?: boolean;
+  source?: string | null;
+  review_status?: "missing" | "uncertain" | "needs_review" | "confirmed";
+}
+export interface ScanJob {
+  scan_id: string;
+  status: string;
+  filename: string;
+  detected_file_type: string;
+  extracted_fields: Record<string, ScanField>;
+  warnings: string[];
+  raw_text?: string | null;
+  requires_user_review: boolean;
+  created_at?: string;
+}
+
 /** Accept either a paginated envelope or a bare array from the backend. */
 function normalizeList<T>(data: Paginated<T> | T[] | null, q: HistoryQuery): Paginated<T> {
   if (Array.isArray(data)) return { items: data, total: data.length, page: q.page ?? 1, page_size: data.length };
@@ -58,4 +78,15 @@ export const soilApi = {
     isMockEnabled()
       ? mockApi.updateField(id, input)
       : apiRequest<FieldProfile>(endpoints.field(id), { method: "PUT", body: input }),
+
+  scan: (file: File): Promise<ScanJob> => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiRequest<ScanJob>(endpoints.scan, { method: "POST", body: form, timeoutMs: 120000 });
+  },
+  scanJob: (id: string): Promise<ScanJob> => apiRequest<ScanJob>(endpoints.scanJob(id)),
+  confirmScan: (id: string, fields: Record<string, ScanField>): Promise<ScanJob> => {
+    const reviewed = Object.fromEntries(Object.entries(fields).filter(([, field]) => field.value != null && String(field.value).trim() !== ""));
+    return apiRequest<ScanJob>(endpoints.confirmScan(id), { method: "POST", body: { extracted_fields: reviewed, confirmed: true } });
+  },
 };

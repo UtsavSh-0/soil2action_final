@@ -19,6 +19,10 @@ interface RequestOptions {
 function extractMessage(data: unknown, fallback: string): string {
   if (data && typeof data === "object") {
     const d = data as Record<string, unknown>;
+    const wrappedError = d["error"];
+    if (wrappedError && typeof wrappedError === "object" && typeof (wrappedError as Record<string, unknown>)["message"] === "string") {
+      return String((wrappedError as Record<string, unknown>)["message"]);
+    }
     if (typeof d["detail"] === "string") return d["detail"];
     if (Array.isArray(d["detail"]) && d["detail"].length) {
       const first = d["detail"][0] as { msg?: string; loc?: unknown[] };
@@ -39,7 +43,8 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
   }
 
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  const isFormData = typeof FormData !== "undefined" && opts.body instanceof FormData;
+  if (opts.body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
   const token = tokenProvider ? await tokenProvider() : null;
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -55,7 +60,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
     res = await fetch(url.toString(), {
       method: opts.method ?? "GET",
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : null,
+      body: opts.body !== undefined ? (isFormData ? opts.body as FormData : JSON.stringify(opts.body)) : null,
       signal: controller.signal,
     });
   } catch (e) {

@@ -29,6 +29,21 @@ Open the API documentation at [http://localhost:8000/docs](http://localhost:8000
 
 Python dependencies for images and PDFs are installed from `requirements.txt`. Image OCR also requires the Tesseract executable installed locally and available on `PATH`. Without it, `/api/soil/scan` returns an OCR setup error; no scan result is fabricated. Text-based PDFs can still be read by PyMuPDF, while scanned PDFs need Tesseract.
 
+On Windows, either install Tesseract OCR from an elevated PowerShell with Chocolatey:
+
+```powershell
+choco install tesseract -y
+tesseract --version
+```
+
+Or use a Windows installer listed by the [Tesseract project documentation](https://tesseract-ocr.github.io/tessdoc/Downloads.html). Reopen PowerShell after installation so PATH is refreshed. If it is installed in the usual location but not on PATH, set `TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe` in `backend/.env`, then restart FastAPI. If language files are stored separately, set `TESSDATA_PREFIX` to the directory containing the selected `*.traineddata` files. `OCR_LANGUAGE=eng` selects English; install the matching Tesseract language data before setting a different language.
+
+## Soil Health Card scanner
+
+Open `/scan` in the frontend to capture a still frame from the browser camera or choose a JPG, PNG, or PDF (maximum 10 MB). Camera access requires `localhost` or HTTPS and browser permission. On mobile, the rear camera is preferred when available; the camera switch control appears when multiple cameras are available. The preview stays in the browser until the user selects **Extract text**. A framing guide is provided for manual capture; automatic card-boundary detection is not implemented.
+
+The backend validates file content, reads embedded PDF text when available, and uses local Tesseract OCR for images and scanned PDF pages. It extracts candidate fields with source context and OCR confidence where available. Values stay unconfirmed until edited or reviewed and confirmed. The raw text and extraction record are stored in SQLite. This scanner performs extraction only: confirmation does not run soil analysis or create recommendations. To test, run the backend and frontend, open `http://localhost:5173/scan`, and upload an actual card image or PDF. OCR accuracy depends on image quality, language data, and card layout; inspect and correct the result before confirming it.
+
 ## Tests
 
 From the `backend` directory with the virtual environment active:

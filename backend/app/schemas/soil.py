@@ -111,11 +111,12 @@ class SoilMeasurementPayload(BaseModel):
 
 
 class OCRExtractedField(BaseModel):
-    value: float | int | None = None
+    value: str | float | int | None = None
     unit: str | None = None
-    confidence: float = 0.0
+    confidence: float | None = None
     confirmed: bool = False
     source: str | None = None
+    review_status: Literal["missing", "uncertain", "needs_review", "confirmed"] = "needs_review"
 
 
 class OCRScanResult(BaseModel):
@@ -123,14 +124,23 @@ class OCRScanResult(BaseModel):
     status: str = "review_required"
     filename: str
     extracted_fields: dict[str, OCRExtractedField] = Field(default_factory=dict)
+    fields_requiring_review: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     raw_text: str | None = None
     requires_user_review: bool = True
 
 
 class ConfirmScanRequest(BaseModel):
-    measurements: SoilMeasurementPayload
-    confirmed: bool = False
+    model_config = ConfigDict(extra="forbid")
+    extracted_fields: dict[str, OCRExtractedField] | None = None
+    measurements: SoilMeasurementPayload | None = None
+    confirmed: bool
+
+    @model_validator(mode="after")
+    def require_fields(self):
+        if self.extracted_fields is None and self.measurements is None:
+            raise ValueError("extracted_fields or measurements must be provided")
+        return self
 
 
 class ScanJobRead(BaseModel):
@@ -140,6 +150,7 @@ class ScanJobRead(BaseModel):
     status: str
     filename: str
     extracted_fields: dict[str, Any] = Field(default_factory=dict)
+    fields_requiring_review: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     raw_text: str | None = None
     requires_user_review: bool = True

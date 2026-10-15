@@ -14,6 +14,7 @@ import { Route as WorkspaceRouteImport } from './routes/_workspace'
 import { Route as WorkspaceAnalyzeRouteImport } from './routes/_workspace.analyze'
 import { Route as WorkspaceDashboardRouteImport } from './routes/_workspace.dashboard'
 import { Route as WorkspaceHistoryRouteImport } from './routes/_workspace.history'
+import { Route as WorkspaceScanRouteImport } from './routes/_workspace.scan'
 import { Route as WorkspaceReportsReportIdRouteImport } from './routes/_workspace.reports.$reportId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -40,6 +41,11 @@ const WorkspaceHistoryRoute = WorkspaceHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceScanRoute = WorkspaceScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceReportsReportIdRoute =
   WorkspaceReportsReportIdRouteImport.update({
     id: '/reports/$reportId',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/analyze': typeof WorkspaceAnalyzeRoute
   '/dashboard': typeof WorkspaceDashboardRoute
   '/history': typeof WorkspaceHistoryRoute
+  '/scan': typeof WorkspaceScanRoute
   '/reports/$reportId': typeof WorkspaceReportsReportIdRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/analyze': typeof WorkspaceAnalyzeRoute
   '/dashboard': typeof WorkspaceDashboardRoute
   '/history': typeof WorkspaceHistoryRoute
+  '/scan': typeof WorkspaceScanRoute
   '/reports/$reportId': typeof WorkspaceReportsReportIdRoute
 }
 export interface FileRoutesById {
@@ -68,13 +76,26 @@ export interface FileRoutesById {
   '/_workspace/analyze': typeof WorkspaceAnalyzeRoute
   '/_workspace/dashboard': typeof WorkspaceDashboardRoute
   '/_workspace/history': typeof WorkspaceHistoryRoute
+  '/_workspace/scan': typeof WorkspaceScanRoute
   '/_workspace/reports/$reportId': typeof WorkspaceReportsReportIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/analyze' | '/dashboard' | '/history' | '/reports/$reportId'
+  fullPaths:
+    | '/'
+    | '/analyze'
+    | '/dashboard'
+    | '/history'
+    | '/scan'
+    | '/reports/$reportId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analyze' | '/dashboard' | '/history' | '/reports/$reportId'
+  to:
+    | '/'
+    | '/analyze'
+    | '/dashboard'
+    | '/history'
+    | '/scan'
+    | '/reports/$reportId'
   id:
     | '__root__'
     | '/'
@@ -82,6 +103,7 @@ export interface FileRouteTypes {
     | '/_workspace/analyze'
     | '/_workspace/dashboard'
     | '/_workspace/history'
+    | '/_workspace/scan'
     | '/_workspace/reports/$reportId'
   fileRoutesById: FileRoutesById
 }
@@ -127,6 +149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceHistoryRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/scan': {
+      id: '/_workspace/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof WorkspaceScanRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/reports/$reportId': {
       id: '/_workspace/reports/$reportId'
       path: '/reports/$reportId'
@@ -141,6 +170,7 @@ interface WorkspaceRouteChildren {
   WorkspaceAnalyzeRoute: typeof WorkspaceAnalyzeRoute
   WorkspaceDashboardRoute: typeof WorkspaceDashboardRoute
   WorkspaceHistoryRoute: typeof WorkspaceHistoryRoute
+  WorkspaceScanRoute: typeof WorkspaceScanRoute
   WorkspaceReportsReportIdRoute: typeof WorkspaceReportsReportIdRoute
 }
 
@@ -148,6 +178,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceAnalyzeRoute: WorkspaceAnalyzeRoute,
   WorkspaceDashboardRoute: WorkspaceDashboardRoute,
   WorkspaceHistoryRoute: WorkspaceHistoryRoute,
+  WorkspaceScanRoute: WorkspaceScanRoute,
   WorkspaceReportsReportIdRoute: WorkspaceReportsReportIdRoute,
 }
 
